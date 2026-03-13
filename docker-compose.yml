@@ -1,0 +1,47 @@
+services:
+  # ----------------------------------------
+  # ตู้ที่ 1: Database (MongoDB)
+  # ----------------------------------------
+  db:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db # เก็บข้อมูลไว้ในเครื่องเรา ข้อมูลจะได้ไม่หายตอนปิดตู้
+
+  # ----------------------------------------
+  # ตู้ที่ 2: Backend (Rails)
+  # ----------------------------------------
+  backend:
+    build: 
+      context: ./backend # บอกให้ไปหา Dockerfile ในโฟลเดอร์ backend
+    ports:
+      - "3001:3001"      # เจาะรูพอร์ต 3001 ให้ตรงกัน
+    volumes:
+      - ./backend:/rails # 🌟 เวทมนตร์ Live Reload: เชื่อมโฟลเดอร์ใน VS Code เข้ากับโฟลเดอร์ /rails ในตู้
+    environment:
+      - RAILS_ENV=development
+      # ส่ง URL ของ MongoDB เข้าไปให้ Rails รู้จัก (db คือชื่อ service ด้านบน)
+      - MONGODB_URI=mongodb://db:27017/expense_tracker_development
+    depends_on:
+      - db               # รอให้ db เปิดเสร็จก่อน ค่อยรัน Rails
+
+  # ----------------------------------------
+  # ตู้ที่ 3: Frontend (React/Vite)
+  # ----------------------------------------
+  frontend:
+    build: 
+      context: ./frontend # บอกให้ไปหา Dockerfile ในโฟลเดอร์ frontend
+    ports:
+      - "5173:5173"      # เจาะรูพอร์ต 5173 (สำหรับ Vite)
+    volumes:
+      - ./frontend:/usr/src/app # 🌟 เวทมนตร์ Live Reload (โฟลเดอร์ในตู้คือ /usr/src/app ตาม Dockerfile ที่คุณสร้าง)
+      - /usr/src/app/node_modules # ป้องกันไม่ให้ node_modules ในเครื่องเราไปทับของในตู้
+    environment:
+      - VITE_API_URL=http://localhost:3001/expenses
+    depends_on:
+      - backend          # รอให้ backend เปิดเสร็จก่อน
+
+# ประกาศตัวแปรสำหรับเก็บข้อมูล Database
+volumes:
+  mongo_data:
